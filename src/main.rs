@@ -53,6 +53,12 @@ async fn fetch_website_data(url: &str) -> Result<HashMap<String, Vec<String>>, S
             Selector::parse("a.dcr-lv2v9o").map_err(|_| ScraperError::ParseError)?,
             Some("aria-label"),
         )
+    } else if url.contains("bbc.com") {
+        (
+            Selector::parse("h2[data-testid='card-headline']")
+                .map_err(|_| ScraperError::ParseError)?,
+            None,
+        )
     } else {
         return Err(ScraperError::ParseError);
     };
