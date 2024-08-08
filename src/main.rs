@@ -34,6 +34,7 @@ const SOURCES: &[&str] = &[
     "https://www.bbc.com",
     "https://www.nature.com",
     "https://www.economist.com",
+    "https://news.google.com",
 ];
 
 #[tokio::main]
@@ -92,17 +93,17 @@ async fn fetch_website_data(url: &str) -> Result<HashMap<String, Vec<String>>, S
             Selector::parse("a[data-analytics]").map_err(|_| ScraperError::ParseError)?,
             None,
         )
+    } else if url.contains("news.google.com") {
+        (
+            Selector::parse("a.gPFEn").map_err(|_| ScraperError::ParseError)?,
+            None,
+        )
     } else {
         return Err(ScraperError::ParseError);
     };
 
     // Define a list of specific unwanted headlines
-    let unwanted_headlines = vec![
-        "Connections Companion",
-        "Spelling Bee",
-        "The Crossword",
-        "Read full edition",
-    ];
+    let unwanted_headlines = vec!["Connections Companion", "Spelling Bee", "The Crossword"];
 
     // Extract the headlines
     let headlines: Vec<String> = document
@@ -163,11 +164,38 @@ fn print_sentiment_results(results: &Vec<HashMap<String, Value>>) {
         );
     }
 
+    let total_headlines = results.len();
+    let positive_headlines = results
+        .iter()
+        .filter(|result| result["sentiment"].as_f64().unwrap() > 0.05)
+        .count();
+    let negative_headlines = results
+        .iter()
+        .filter(|result| result["sentiment"].as_f64().unwrap() < -0.05)
+        .count();
+    let neutral_headlines = total_headlines - positive_headlines - negative_headlines;
+
     let average_sentiment: f64 = results
         .iter()
         .map(|result| result["sentiment"].as_f64().unwrap())
         .sum::<f64>()
-        / results.len() as f64;
+        / total_headlines as f64;
 
-    println!("Overall Sentiment: {}\n", average_sentiment);
+    println!("Overall Sentiment: {:.2}\n", average_sentiment);
+    println!("Total Headlines: {}", total_headlines);
+    println!(
+        "Positive Headlines: {} ({:.2}%)",
+        positive_headlines,
+        (positive_headlines as f64 / total_headlines as f64) * 100.0
+    );
+    println!(
+        "Negative Headlines: {} ({:.2}%)",
+        negative_headlines,
+        (negative_headlines as f64 / total_headlines as f64) * 100.0
+    );
+    println!(
+        "Neutral Headlines: {} ({:.2}%)",
+        neutral_headlines,
+        (neutral_headlines as f64 / total_headlines as f64) * 100.0
+    );
 }
