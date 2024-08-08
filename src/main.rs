@@ -42,9 +42,20 @@ async fn fetch_website_data(url: &str) -> Result<HashMap<String, Vec<String>>, S
     // Parse the HTML
     let document = Html::parse_document(&text);
 
-    // Define a selector to extract the headlines
-    let headline_selector =
-        Selector::parse("p.indicate-hover").map_err(|_| ScraperError::ParseError)?;
+    // Determine which website to scrape from based on the URL
+    let (headline_selector, attribute) = if url.contains("nytimes.com") {
+        (
+            Selector::parse("p.indicate-hover").map_err(|_| ScraperError::ParseError)?,
+            None,
+        )
+    } else if url.contains("theguardian.com") {
+        (
+            Selector::parse("a.dcr-lv2v9o").map_err(|_| ScraperError::ParseError)?,
+            Some("aria-label"),
+        )
+    } else {
+        return Err(ScraperError::ParseError);
+    };
 
     // Define a list of specific unwanted headlines
     let unwanted_headlines = vec!["Connections Companion", "Spelling Bee", "The Crossword"];
@@ -53,22 +64,21 @@ async fn fetch_website_data(url: &str) -> Result<HashMap<String, Vec<String>>, S
     let headlines: Vec<String> = document
         .select(&headline_selector)
         .filter_map(|element| {
-            let class_name = element.value().attr("class").unwrap_or("");
-            if class_name.contains("css") {
-                let text = element
+            let text = match attribute {
+                Some(attr) => element.value().attr(attr).unwrap_or("").trim().to_string(),
+                None => element
                     .text()
                     .collect::<Vec<_>>()
                     .join(" ")
                     .trim()
-                    .to_string();
-                if text.split_whitespace().count() > 1
-                    && !unwanted_headlines.contains(&text.as_str())
-                {
-                    // Filter out one-word and unwanted headlines
-                    return Some(text);
-                }
+                    .to_string(),
+            };
+            if text.split_whitespace().count() > 1 && !unwanted_headlines.contains(&text.as_str()) {
+                // Filter out one-word and unwanted headlines
+                Some(text)
+            } else {
+                None
             }
-            None
         })
         .collect();
 
