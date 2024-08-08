@@ -9,3 +9,7 @@ scraper = "0.13.0"
 tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 clap = { version = "4.0", features = ["derive"] }
+vader_sentiment = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
